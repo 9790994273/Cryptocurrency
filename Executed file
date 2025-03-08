@@ -1,0 +1,140 @@
+// Import dependencies
+const Web3 = require('web3');
+const EthereumTx = require('ethereumjs-tx');
+const abi = require('./abi.json');
+
+// Set up Web3 provider
+const web3 = new Web3(new Web3.providers.HttpProvider('https://mainnet.infura.io/v3/YOUR_PROJECT_ID'));
+
+// Set up contract instance
+const contractAddress = '0x...';
+const contract = new web3.eth.Contract(abi, contractAddress);
+
+// Function to get user's wallet balance
+async function getWalletBalance(address) {
+  try {
+    const balance = await web3.eth.getBalance(address);
+    return balance;
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Function to send cryptocurrency
+async function sendCryptocurrency(fromAddress, toAddress, amount) {
+  try {
+    const txCount = await web3.eth.getTransactionCount(fromAddress);
+    const tx = new EthereumTx({
+      nonce: txCount,
+      gasPrice: web3.utils.toWei('20', 'gwei'),
+      gasLimit: 100000,
+      to: toAddress,
+      value: web3.utils.toWei(amount, 'ether'),
+    });
+    tx.sign(web3.eth.accounts.privateKeyToAccount(fromAddress));
+    const serializedTx = tx.serialize();
+    const txHash = await web3.eth.sendSignedTransaction(serializedTx);
+    return txHash;
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Function to get cryptocurrency price
+async function getCryptocurrencyPrice(symbol) {
+  try {
+    const price = await contract.methods.getPrice(symbol).call();
+    return price;
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Function to buy cryptocurrency
+async function buyCryptocurrency(address, symbol, amount) {
+  try {
+    const price = await getCryptocurrencyPrice(symbol);
+    const totalCost = web3.utils.toWei(amount, 'ether') * price;
+    const txHash = await sendCryptocurrency(address, contractAddress, totalCost);
+    return txHash;
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Function to sell cryptocurrency
+async function sellCryptocurrency(address, symbol, amount) {
+  try {
+    const price = await getCryptocurrencyPrice(symbol);
+    const totalRevenue = web3.utils.toWei(amount, 'ether') * price;
+    const txHash = await sendCryptocurrency(contractAddress, address, totalRevenue);
+    return txHash;
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+module.exports = {
+  getWalletBalance,
+  sendCryptocurrency,
+  getCryptocurrencyPrice,
+  buyCryptocurrency,
+  sellCryptocurrency,
+};
+```
+
+Abi.json
+```
+[
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "getPrice",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_symbol",
+        "type": "string"
+      },
+      {
+        "name": "_amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "buy",
+    "outputs": [],
+    "payable": true,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_symbol",
+        "type": "string"
+      },
+      {
+        "name": "_amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "sell",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]
+```
